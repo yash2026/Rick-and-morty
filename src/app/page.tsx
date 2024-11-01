@@ -1,101 +1,155 @@
-import Image from "next/image";
+"use client";
+import { useEffect, useState } from "react";
 
-export default function Home() {
+import EpisodeList from "@/components/EpisodeList";
+import CharacterGrid from "@/components/CharacterGrid";
+import {
+  fetchAllCharacters,
+  fetchCharacterByUrl,
+  fetchCharactersByEpisode,
+  fetchEpisodes,
+} from "@/lib/api";
+import Pagination from "@/components/Pagination";
+
+const Home: React.FC = () => {
+  const [episodes, setEpisodes] = useState<any[]>([]);
+  const [characters, setCharacters] = useState<any[]>([]);
+  const [filteredCharacters, setFilteredCharacters] = useState<any[]>([]);
+  const [selectedEpisode, setSelectedEpisode] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [charactersPerPage] = useState(10); // Max characters per page
+  const [loading, setLoading] = useState(false); //loading state
+
+  useEffect(() => {
+    const getEpisodes = async () => {
+      setLoading(true);
+      const data = await fetchEpisodes();
+      setEpisodes(data.results);
+      setLoading(false);
+    };
+    getEpisodes();
+  }, []);
+
+  // Fetch all characters on initial load
+  useEffect(() => {
+    const getAllCharacters = async () => {
+      setLoading(true);
+      const data = await fetchAllCharacters();
+      setCharacters(data.results);
+      setLoading(false);
+    };
+    getAllCharacters();
+  }, []);
+
+  const handleEpisodeClick = async (id: number) => {
+    setSelectedEpisode(id);
+    setLoading(true);
+    const characterUrls = await fetchCharactersByEpisode(id.toString());
+    const charactersData = await Promise.all(
+      characterUrls.map((url: string) => fetchCharacterByUrl(url))
+    );
+    setCharacters(charactersData);
+    setLoading(false);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Handle resetting the episode selection
+  const handleResetEpisodes = async () => {
+    setSelectedEpisode(null);
+    setLoading(true);
+    const allCharacters = await fetchAllCharacters();
+    setCharacters(allCharacters.results);
+    setLoading(false);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Implement pagination logic
+  useEffect(() => {
+    const indexOfLastCharacter = currentPage * charactersPerPage;
+    const indexOfFirstCharacter = indexOfLastCharacter - charactersPerPage;
+    setFilteredCharacters(
+      characters.slice(indexOfFirstCharacter, indexOfLastCharacter)
+    );
+  }, [characters, currentPage]);
+
+  // Change page
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+  // Next Page functionality
+  const handleNextPage = () => {
+    if (currentPage < Math.ceil(characters.length / charactersPerPage)) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  // Previous Page functionality
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
+    <div className="flex flex-col h-screen max-h-screen ">
+      <div className="text-center p-2 text-lg font-bold max-h-[10%]">
+        Rick and morty characters
+      </div>
+      <div className="bg-white mx-4 mb-4 rounded-lg flex max-h-[90%]">
+        <EpisodeList
+          episodes={episodes}
+          selectedEpisode={selectedEpisode}
+          onEpisodeClick={handleEpisodeClick}
+          onResetEpisodes={handleResetEpisodes}
+          loading={loading}
         />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+        <div className="flex flex-col mb-2 justify-between h-[88vh] w-full">
+          {loading ? ( // Show loading indicator while fetching
+            <div className="flex items-center justify-center h-full">
+              <p className="text-lg font-bold">Loading...</p>
+            </div>
+          ) : (
+            <>
+              <CharacterGrid characters={filteredCharacters} />
+              <div className="flex flex-row items-center justify-between px-6">
+                <button
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                  className={`px-4 py-2 border rounded-lg transition-colors duration-200 ease-in-out ${
+                    currentPage === 1
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"
+                  }`}
+                >
+                  Previous
+                </button>
+                <Pagination
+                  currentPage={currentPage}
+                  charactersPerPage={charactersPerPage}
+                  totalCharacters={characters.length}
+                  paginate={paginate}
+                />
+                <button
+                  onClick={handleNextPage}
+                  disabled={
+                    currentPage ===
+                    Math.ceil(characters.length / charactersPerPage)
+                  }
+                  className={`px-4 py-2 border rounded-lg transition-colors duration-200 ease-in-out ${
+                    currentPage ===
+                    Math.ceil(characters.length / charactersPerPage)
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"
+                  }`}
+                >
+                  Next
+                </button>
+              </div>
+            </>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
     </div>
   );
-}
+};
+
+export default Home;
