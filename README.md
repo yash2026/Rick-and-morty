@@ -1,6 +1,6 @@
-# Rick and Morty Characters Explorer
+# Rick and Morty Characters
 
-This project is a **Rick and Morty Characters Explorer** built with **Next.js** and **Tailwind CSS**. It allows users to browse characters from the Rick and Morty series by selecting episodes from the left sidebar. The app supports pagination and has a loading state for better user experience.
+This project is a **Rick and Morty Characters** built with **Next.js** and **Tailwind CSS**. It allows users to browse characters from the Rick and Morty series by selecting episodes from the left sidebar. The app supports pagination and has a loading state for better user experience.
 
 ## Live Demo
 
